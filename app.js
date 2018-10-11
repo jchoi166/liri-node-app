@@ -1,6 +1,8 @@
 require("dotenv").config();
-const fs = require('fs')
-const request = require('request')
+var fs = require('fs');
+var request = require('request');
+var moment = require('moment');
+
 
 //~~~~~~~~~~~~~Spotify Vars~~~~~~~~~~~~~~~~~~~~//
 var spottyImport = require("./keys.js")
@@ -12,75 +14,101 @@ let typeInput = process.argv[2]
 let nameInput = process.argv.splice(3).toString()
 
 //~~~~~~~~~~~~~Functions~~~~~~~~~~~~~~~~~~~~~~~~//
+//~~~~~Spotify~~~~~//
 var songSearch = _ => {
-  // if (nameInput = false) {
-  //   spotify.search({ type: 'track', query: 'The Sign', limit: 1 }, function(err, data) {
-  //     if (err) {
-  //       return console.log('Error occurred: ' + err);
-  //     }
-     
-  //   console.log(data.tracks.items[0].artists[0].name); 
-  //   console.log(data.tracks.items[0].name); 
-  //   console.log(data.tracks.items[0].preview_url); 
-  //   console.log(data.tracks.items[0].album.name); 
-  //   }); 
-  // }
-  spotify.search({ type: 'track', query: nameInput, limit: 1 }, function(err, data) {
-    if (err) {
-      return console.log('Error occurred: ' + err);
-    }
-   
-  console.log(data.tracks.items[0].artists[0].name); 
-  console.log(data.tracks.items[0].name); 
-  console.log(data.tracks.items[0].preview_url); 
-  console.log(data.tracks.items[0].album.name); 
-  });
+  var songSearcher = x => {
+    spotify.search({ type: 'track', query: x, limit: 1 }, function (err, data) {
+      if (err) {
+        return console.log('Error occurred: ' + err);
+      }
+      let info = data.tracks.items[0]
+
+      console.log(
+        `Artist: ${info.artists[0].name} 
+        Track: ${info.name}
+        Preview Link!: ${info.preview_url}
+        Album: ${info.album.name}`
+      );
+    });
+  }
+  if (nameInput) {
+    songSearcher(nameInput)
+  }
+  else {
+    songSearcher("the sign")
+  }
 }
-
+//~~~~~~Bands In Town~~~~~~~//
 var bandSearch = _ => {
-  var queryUrl = "https://rest.bandsintown.com/artists/" + nameInput + "/events?app_id=codingbootcamp";  
-  
-  request(queryUrl, function(error, response, body){
-    if (error) {console.log(error)}
+  var queryUrl = "https://rest.bandsintown.com/artists/" + nameInput + "/events?app_id=codingbootcamp";
 
-    console.log(JSON.parse(body)[0])
+  request(queryUrl, function (error, response, body) {
+    if (error) { console.log(error) }
+
+    let info = JSON.parse(body)[0]
+    console.log(
+      `       Venue: ${info.venue.name}
+       Location: ${info.venue.city}, ${info.venue.region}
+       Date and Time: ${moment(info.datetime).format("LLL")}`
+    )
   })
 }
-
+//~~~~~OMDB~~~~~~//
 var movieSearch = _ => {
-  var queryUrl = "http://www.omdbapi.com/?t=" + nameInput + "&y=&plot=short&apikey=trilogy";
+  var movieSearcher = x => {
+    var queryUrl = "http://www.omdbapi.com/?t=" + x + "&y=&plot=short&apikey=trilogy";
 
-  // console.log(queryUrl);
+    request(queryUrl, function (error, response, body) {
 
-  request(queryUrl, function(error, response, body) {
+      if (error) { console.log(error) }
 
-  if (error) {console.log(error)}
+      let info = JSON.parse(body)
+      console.log(
+        `      Title: ${info.Title}
+      Release Year: ${info.Year} 
+      IMDB Rating: ${info.Ratings[0].Value}
+      Rotten Tomatoes Rating: ${info.Ratings[1].Value}
+      Country: ${info.Country}
+      Language: ${info.Language}
+      Plot: ${info.Plot}
+      Actors: ${info.Actors}`
+      )
+    });
+  }
+  
+  if (nameInput) {
+    movieSearcher(nameInput)
+  }
+  else {
+    movieSearcher("mr nobody")
+  }
+}
+//~~~~~~~Text Reader~~~~~~//
+var random = _ => {
+  fs.readFile("random.txt", "utf8", function (error, data) {
+    if (error) {
+      return console.log(error);
+    }
+    var dataArr = data.split(",");
+    typeInput = dataArr[0]
+    nameInput = dataArr[1]
+    runApp()
+  });
+}
+//~~~~~~~Search Function~~~~~~~//
+var runApp = function () {
+  switch (typeInput) {
+    case "concert-this": bandSearch()
+      break
 
-  console.log("Title: " + JSON.parse(body).Title);
-  console.log("Release Year: " + JSON.parse(body).Year);
-  console.log("IMDB Rating: " + JSON.parse(body).Ratings[0].Value);
-  console.log("Rotten Tomatoes Rating: " + JSON.parse(body).Ratings[1].Value);
-  console.log("Country: " + JSON.parse(body).Country);
-  console.log("Language: " + JSON.parse(body).Language);
-  console.log("Plot: " + JSON.parse(body).Plot);
-  console.log("Actors: " + JSON.parse(body).Actors);
-  // console.log(body)
-});
+    case "spotify-this-song": songSearch()
+      break
+
+    case "movie-this": movieSearch()
+      break
+
+    case "do-what-it-says": random()
+  }
 }
 
-var random = _ => { 
-
-}
-
-switch(typeInput) {
-   case "concert-this": bandSearch()
-   break
-
-   case "spotify-this-song": songSearch()
-   break 
-
-   case "movie-this": movieSearch()
-   break
-
-   case "do-what-it-says": random()
-}
+runApp()
